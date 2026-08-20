@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+  --accent: #5b8cff;
+  --page-background: #202328;
+  --button-size: 48px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--page-background);
+  font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--page-background);
+}
+
+.carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--page-background);
+  user-select: none;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.35s cubic-bezier(.2, .9, .2, 1);
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+.slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  overflow: hidden;
+}
+
+.slide-inner {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.slide-inner img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Navigation */
+
+.btn {
+  position: absolute;
+  top: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--button-size);
+  height: var(--button-size);
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(5, 10, 30, 0.68);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: rgba(5, 10, 30, 0.85);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.btn svg {
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+}
+
+.btn.left {
+  left: 18px;
+}
+
+.btn.right {
+  right: 18px;
+}
+
+/* Dots sit on top of the image */
+
+.dots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.dot.active {
+  background: var(--accent);
+}
+
+@media (max-width: 800px) {
+  :root {
+    --button-size: 40px;
+  }
+
+  .btn.left {
+    left: 10px;
+  }
+
+  .btn.right {
+    right: 10px;
+  }
+
+  .dots {
+    bottom: 10px;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <div
+    id="carousel"
+    class="carousel"
+    role="region"
+    aria-roledescription="carousel"
+    aria-label="Image carousel"
+    tabindex="0"
+  >
+    <div id="track" class="track"></div>
+
+    <button class="btn left" id="prevBtn" type="button" aria-label="Previous image">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path>
+      </svg>
+    </button>
+
+    <button class="btn right" id="nextBtn" type="button" aria-label="Next image">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"></path>
+      </svg>
+    </button>
+
+    <div id="dots" class="dots"></div>
+  </div>
+</div>
+
+<script>
+const images = [
+  "",
+  "",
+  ""
+];
+
+const carousel = document.getElementById("carousel");
+const track = document.getElementById("track");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const dotsWrap = document.getElementById("dots");
+
+let index = 1;
+let moving = false;
+let transitionTimer;
+
+let dragging = false;
+let startX = 0;
+let dragOffset = 0;
+let pointerId = null;
+
+function makeSlide(src, imageIndex, clone = false) {
+  const slide = document.createElement("div");
+  slide.className = "slide";
+  slide.setAttribute("aria-hidden", clone ? "true" : "false");
+
+  const inner = document.createElement("div");
+  inner.className = "slide-inner";
+
+  const image = document.createElement("img");
+  image.src = src;
+  image.alt = clone ? "" : `Carousel image ${imageIndex + 1}`;
+  image.draggable = false;
+
+  inner.appendChild(image);
+  slide.appendChild(inner);
+
+  return slide;
+}
+
+function buildCarousel() {
+  track.replaceChildren();
+  dotsWrap.replaceChildren();
+
+  track.appendChild(
+    makeSlide(images[images.length - 1], images.length - 1, true)
+  );
+
+  images.forEach((src, imageIndex) => {
+    track.appendChild(makeSlide(src, imageIndex));
+  });
+
+  track.appendChild(makeSlide(images[0], 0, true));
+
+  images.forEach((_, dotIndex) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "dot";
+    dot.setAttribute("aria-label", `Show image ${dotIndex + 1}`);
+
+    dot.addEventListener("click", () => {
+      if (moving || dragging) return;
+
+      index = dotIndex + 1;
+      updateDots();
+      animate();
+    });
+
+    dotsWrap.appendChild(dot);
+  });
+
+  index = 1;
+  setPosition(false);
+  updateDots();
+}
+
+function setPosition(animate = true, offset = 0) {
+  track.style.transition = animate
+    ? "transform 0.35s cubic-bezier(.2, .9, .2, 1)"
+    : "none";
+
+  track.style.transform =
+    `translate3d(calc(${-index * 100}% + ${offset}px), 0, 0)`;
+}
+
+function animate() {
+  moving = true;
+  setPosition(true);
+
+  clearTimeout(transitionTimer);
+  transitionTimer = setTimeout(finishTransition, 450);
+}
+
+function finishTransition() {
+  if (!moving) return;
+
+  clearTimeout(transitionTimer);
+
+  if (index === 0) {
+    index = images.length;
+    setPosition(false);
+  } else if (index === images.length + 1) {
+    index = 1;
+    setPosition(false);
+  }
+
+  moving = false;
+  updateDots();
+}
+
+function updateDots() {
+  const activeIndex =
+    (index - 1 + images.length) % images.length;
+
+  Array.from(dotsWrap.children).forEach((dot, dotIndex) => {
+    const active = dotIndex === activeIndex;
+    dot.classList.toggle("active", active);
+    dot.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
+function moveBy(amount) {
+  if (moving || dragging) return;
+
+  index += amount;
+  updateDots();
+  animate();
+}
+
+prevBtn.addEventListener("click", () => moveBy(-1));
+nextBtn.addEventListener("click", () => moveBy(1));
+
+track.addEventListener("transitionend", finishTransition);
+
+carousel.addEventListener("keydown", event => {
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    moveBy(-1);
+  }
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    moveBy(1);
+  }
+});
+
+/* Mouse and touch dragging */
+
+track.addEventListener("pointerdown", event => {
+  if (moving) return;
+
+  dragging = true;
+  startX = event.clientX;
+  dragOffset = 0;
+  pointerId = event.pointerId;
+
+  track.setPointerCapture(pointerId);
+  setPosition(false);
+});
+
+track.addEventListener("pointermove", event => {
+  if (!dragging || event.pointerId !== pointerId) return;
+
+  dragOffset = event.clientX - startX;
+  setPosition(false, dragOffset);
+});
+
+function finishDrag(event) {
+  if (!dragging || event.pointerId !== pointerId) return;
+
+  const threshold = Math.min(100, carousel.clientWidth * 0.15);
+
+  if (Math.abs(dragOffset) >= threshold) {
+    index += dragOffset < 0 ? 1 : -1;
+  }
+
+  dragging = false;
+
+  if (track.hasPointerCapture(pointerId)) {
+    track.releasePointerCapture(pointerId);
+  }
+
+  pointerId = null;
+  dragOffset = 0;
+
+  updateDots();
+  animate();
+}
+
+track.addEventListener("pointerup", finishDrag);
+track.addEventListener("pointercancel", finishDrag);
+
+buildCarousel();
+</script>
+</body>
+</html>
