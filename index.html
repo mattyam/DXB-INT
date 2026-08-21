@@ -408,5 +408,192 @@ track.addEventListener("pointercancel", finishDrag);
 
 buildCarousel();
 </script>
+  <!-- Carousel right-click and fullscreen enhancement -->
+<script>
+(() => {
+  const carousel = document.getElementById("carousel");
+  const track = document.getElementById("track");
+
+  if (!carousel || !track) return;
+
+  /* Add enhancement CSS */
+  const style = document.createElement("style");
+
+  style.textContent = `
+    .slide-inner img {
+      pointer-events: auto !important;
+    }
+
+    .carousel-fullscreen-btn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      background: rgba(5, 10, 30, 0.68);
+      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      cursor: pointer;
+    }
+
+    .carousel-fullscreen-btn:hover {
+      background: rgba(5, 10, 30, 0.85);
+    }
+
+    .carousel-fullscreen-btn:focus-visible {
+      outline: 2px solid var(--accent, #5b8cff);
+      outline-offset: 3px;
+    }
+
+    .carousel-fullscreen-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #fff;
+    }
+
+    .carousel-fullscreen-btn .exit-icon {
+      display: none;
+    }
+
+    .carousel-fullscreen-btn.is-fullscreen .enter-icon {
+      display: none;
+    }
+
+    .carousel-fullscreen-btn.is-fullscreen .exit-icon {
+      display: block;
+    }
+
+    .carousel:fullscreen,
+    .carousel:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+
+    .carousel:fullscreen .slide-inner img,
+    .carousel:-webkit-full-screen .slide-inner img {
+      object-fit: contain;
+    }
+
+    @media (max-width: 800px) {
+      .carousel-fullscreen-btn {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  /* Prevent right-click from activating carousel dragging */
+  track.addEventListener(
+    "pointerdown",
+    event => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        event.stopImmediatePropagation();
+      }
+    },
+    true
+  );
+
+  /* Create fullscreen button */
+  const fullscreenBtn = document.createElement("button");
+
+  fullscreenBtn.type = "button";
+  fullscreenBtn.className = "carousel-fullscreen-btn";
+  fullscreenBtn.setAttribute("aria-label", "Enter fullscreen");
+  fullscreenBtn.title = "Enter fullscreen";
+
+  fullscreenBtn.innerHTML = `
+    <svg class="enter-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path>
+    </svg>
+
+    <svg class="exit-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"></path>
+    </svg>
+  `;
+
+  carousel.appendChild(fullscreenBtn);
+
+  async function toggleFullscreen() {
+    const fullscreenElement =
+      document.fullscreenElement ||
+      document.webkitFullscreenElement;
+
+    if (fullscreenElement) {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+
+      return;
+    }
+
+    try {
+      if (carousel.requestFullscreen) {
+        await carousel.requestFullscreen();
+      } else if (carousel.webkitRequestFullscreen) {
+        carousel.webkitRequestFullscreen();
+      }
+    } catch (error) {
+      /*
+       * If the embedded viewer blocks fullscreen,
+       * open the currently visible image in a new tab.
+       */
+      const visibleImage =
+        carousel.querySelector('.slide[aria-hidden="false"] img') ||
+        carousel.querySelector(".slide img");
+
+      if (visibleImage) {
+        window.open(visibleImage.src, "_blank", "noopener,noreferrer");
+      }
+    }
+  }
+
+  function updateFullscreenButton() {
+    const fullscreenActive = Boolean(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement
+    );
+
+    fullscreenBtn.classList.toggle(
+      "is-fullscreen",
+      fullscreenActive
+    );
+
+    fullscreenBtn.setAttribute(
+      "aria-label",
+      fullscreenActive ? "Exit fullscreen" : "Enter fullscreen"
+    );
+
+    fullscreenBtn.title =
+      fullscreenActive ? "Exit fullscreen" : "Enter fullscreen";
+  }
+
+  fullscreenBtn.addEventListener("click", toggleFullscreen);
+
+  document.addEventListener(
+    "fullscreenchange",
+    updateFullscreenButton
+  );
+
+  document.addEventListener(
+    "webkitfullscreenchange",
+    updateFullscreenButton
+  );
+})();
+</script>
 </body>
 </html>
